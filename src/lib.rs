@@ -22,7 +22,9 @@ impl Config {
 pub fn run(config: Config) -> Result<(), Box<dyn Error>>{
     let contents = fs::read_to_string(config.file_path)?;
 
-    println!("With Text:\n{contents}");
+    for line in search(&config.query, &contents) {
+        println!("{}", line);
+    }
 
     Ok(())
 }
@@ -52,7 +54,7 @@ Rust:
 safe, fast, productive.
 Pick three.";
 
-        println!("{}",contents);
+        // println!("{}",contents);
         assert_eq!(vec!["safe, fast, productive."], search(query, contents));
     }
 }
