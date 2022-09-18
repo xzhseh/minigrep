@@ -8,13 +8,22 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn build(args: &[String]) -> Result<Config, &'static str> {
-        if args.len() < 3 {
-            return Err("Not enough arguments!");
-        }
+    pub fn build(mut args: impl Iterator<Item = String>) -> Result<Config, &'static str> {
+        // Remember the first argument of the CLI will always be the file name in Rust
+        args.next(); // So just skip it because we won't use it this time
 
-        let query = args[1].clone(); // Query for the word to find, "hello", "hi"...etc
-        let file_path = args[2].clone(); // The file path to which you wish to grep the word
+        // Note the return type of next() is Option<T>,
+        // But what we should return is Result<T, E>
+        let query = match args.next() { // Query for the word to find, "hello", "hi"...etc
+            Some(arg) => arg,
+            None => return Err("Missing the query character/word"),
+        };
+
+        let file_path = match args.next() { // The file path to which you wish to grep the word
+            Some(arg) => arg,
+            None => return Err("Missing the file path to search for"),
+        };
+
         // We only cares about is the environment variable set or not, so basically just check is_ok()
         let ignore_case = env::var("IGNORE_CASE").is_ok();
 
@@ -42,15 +51,13 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>>{
 
 pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
     // The return vector which contains all possible results generated from contents
-    let mut results = Vec::new();
-
-    for line in contents.lines() {
-        if line.contains(query) {
-            results.push(line);
-        }
-    }
-
-    results
+    // With the iterator and closure implementation, this search() method now support
+    // concurrency within multiple threads because we don't need to keep track of the
+    // mutual access to the previous mutable return vector
+    contents
+        .lines()
+        .filter(|line| line.contains(query))
+        .collect()
 }
 
 pub fn search_case_insensitive<'a>(
@@ -58,16 +65,12 @@ pub fn search_case_insensitive<'a>(
     contents: &'a str,
 ) -> Vec<&'a str> {
     // The return vector which contains all possible results generated from contents
-    let mut results = Vec::new();
-    let query = query.to_lowercase(); // Shadow the original "query" from let statement
-
-    for line in contents.lines() {
-        if line.to_lowercase().contains(&query) { // Use Ref(String slice: &str) but not moved value
-            results.push(line);
-        }
-    }
-
-    results
+    // The holistic behaviour is the same as search(), read the documentation above
+    // for more details
+    contents
+        .lines()
+        .filter(|line| line.to_lowercase().contains(&query.to_lowercase()))
+        .collect()
 }
 
 #[cfg(test)]
