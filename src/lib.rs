@@ -1,9 +1,10 @@
 use std::error::Error;
-use std::fs;
+use std::{env, fs};
 
 pub struct Config {
     pub query: String,
     pub file_path: String,
+    pub ignore_case: bool,
 }
 
 impl Config {
@@ -14,16 +15,26 @@ impl Config {
 
         let query = args[1].clone(); // Query for the word to find, "hello", "hi"...etc
         let file_path = args[2].clone(); // The file path to which you wish to grep the word
+        // We only cares about is the environment variable set or not, so basically just check is_ok()
+        let ignore_case = env::var("IGNORE_CASE").is_ok();
 
-        Ok(Config { query, file_path })
+        Ok(Config { query, file_path, ignore_case })
     }
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>>{
     let contents = fs::read_to_string(config.file_path)?;
 
-    for line in search(&config.query, &contents) {
-        println!("{}", line);
+    let results = if config.ignore_case {
+        search_case_insensitive(&config.query, &contents)
+    } else {
+        search(&config.query, &contents)
+    };
+
+    println!("Search results:\n---------------");
+
+    for line in results {
+        println!("{line}");
     }
 
     Ok(())
